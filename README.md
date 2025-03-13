@@ -9,8 +9,6 @@
 6. [Configuration](#configuration)
 7. [How It Works](#how-it-works)
 8. [Error Handling](#error-handling)
-9. [Contributing](#contributing)
-10. [License](#license)
 
 ## Project Overview
 Rufus is an intelligent web data extraction tool designed to crawl websites and extract relevant information based on user-defined instructions. Utilizing advanced language models and web scraping techniques, Rufus aims to provide structured and meaningful data for various applications, including research, data analysis, and content generation.
@@ -28,14 +26,14 @@ To set up Rufus, follow these steps:
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/yourusername/rufus.git
-   cd rufus
+   git clone https://github.com/Darshit98/Rufus-AI-Agent.git
+   cd Rufus-AI-Agent
    ```
 
 2. **Create a Virtual Environment** (optional but recommended):
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   source venv\Scripts\activate (On Windows)
    ```
 
 3. **Install Dependencies**:
@@ -93,9 +91,3 @@ Rufus includes robust error handling to manage issues such as:
 - Content parsing errors
 
 In case of an error, Rufus saves any collected data to an error file for review.
-
-## Contributing
-Contributions are welcome! If you have suggestions for improvements or find bugs, please open an issue or submit a pull request.
-
-## License
-This project is licensed under the MIT License. See the LICENSE file for more details.
