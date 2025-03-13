@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 import warnings
 from difflib import SequenceMatcher
 
-# Suppress TensorFlow warnings
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 0=all, 1=info, 2=warning, 3=error
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -33,22 +33,17 @@ class RufusLogger:
         self.logger = logging.getLogger("rufus")
         self.logger.setLevel(log_level)
         
-        # Remove any existing handlers
         for handler in self.logger.handlers[:]:
             self.logger.removeHandler(handler)
         
-        # Create console handler with a higher log level
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(log_level)
         
-        # Create formatter and add it to the handler
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         console_handler.setFormatter(formatter)
         
-        # Add the handler to the logger
         self.logger.addHandler(console_handler)
         
-        # Add file handler if specified
         if log_file:
             file_handler = logging.FileHandler(log_file)
             file_handler.setLevel(log_level)
@@ -94,15 +89,12 @@ class Rufus:
         self.save_intermediate = save_intermediate
         self.llm_relevance_check = llm_relevance_check
         
-        # Initialize logger
         self.logger = RufusLogger(log_level=log_level, log_file=log_file)
         self.logger.info("Initializing Rufus...")
         
-        # Initialize Selenium with error handling
         self.driver = None
         self._init_selenium()
         
-        # Initialize Agno agent with error handling
         self._init_agent()
     
     def _init_selenium(self):
@@ -119,7 +111,6 @@ class Rufus:
             chrome_options.add_argument("--silent")
             chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
             
-            # Redirect WebDriver logs to devnull
             with open(os.devnull, 'w') as f:
                 webdriver_service = Service(
                     ChromeDriverManager().install()
@@ -184,25 +175,18 @@ class Rufus:
             return None, []
         
         try:
-            # Set page load timeout
             self.driver.set_page_load_timeout(30)
             
-            # Navigate to the URL
             self.driver.get(url)
             
-            # Wait for dynamic content to load
             time.sleep(3)
             
-            # Get the page source
             page_source = self.driver.page_source
             
-            # Parse with BeautifulSoup
             soup = BeautifulSoup(page_source, 'html.parser')
             
-            # Extract text content
             text_content = soup.get_text(separator=' ', strip=True)
             
-            # Extract links
             links = []
             for a_tag in soup.find_all('a', href=True):
                 link = a_tag['href']
@@ -215,7 +199,6 @@ class Rufus:
         except Exception as e:
             self.logger.error(f"Error scraping {url}: {e}")
             
-            # Try a simpler approach as fallback
             try:
                 self.logger.info(f"Trying fallback scraping method for {url}")
                 self.driver.get(url)
@@ -236,19 +219,16 @@ class Rufus:
         Returns:
             bool: True if relevant, False otherwise
         """
-        # Check if content is too short
+        
         if not content or len(content) < min_length:
             return False
         
-        # If LLM relevance check is disabled, assume all content is relevant
         if not self.llm_relevance_check:
             return True
         
-        # For large content, take a sample to check relevance
-        content_sample = content[:5000]  # First 5000 chars
+        content_sample = content[:5000]  
         
         try:
-            # Create a simple prompt to check relevance
             prompt = f"""
             I need to determine if the following content is relevant to this instruction: "{instructions}"
             
@@ -261,13 +241,10 @@ class Rufus:
             Do not include any other text in your response.
             """
             
-            # Use the agent to check relevance
             response = self.agent.run(prompt)
             
-            # Extract the response text
             response_text = response.content.strip().upper()
             
-            # Check if the response indicates relevance
             is_relevant = "YES" in response_text
             
             self.logger.info(f"Relevance check: {'Relevant' if is_relevant else 'Not relevant'}")
@@ -275,7 +252,6 @@ class Rufus:
             
         except Exception as e:
             self.logger.warning(f"Error checking relevance: {e}")
-            # If there's an error, assume it might be relevant
             return True
     
     def extract_data(self, url, content, instructions):
@@ -290,7 +266,7 @@ class Rufus:
         Returns:
             dict: Structured data
         """
-        # Check if content is too short or empty
+
         if not content or len(content) < 50:
             self.logger.warning(f"Content too short or empty for {url}")
             return {
@@ -299,7 +275,6 @@ class Rufus:
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
             }
         
-        # Check for non-text content based on URL
         url_extension = os.path.splitext(url)[1].lower()
         if url_extension in ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.mp4', '.webm', '.mp3', '.wav']:
             self.logger.info(f"Skipping non-text content: {url}")
@@ -310,7 +285,6 @@ class Rufus:
             }
         
         try:
-            # Prepare prompt for the agent
             prompt = f"""
             I've scraped the following webpage: {url}
             
@@ -322,16 +296,14 @@ class Rufus:
             Do not include any function calls or tool usage text in your final response.
             """
             
-            # Run the agent
             self.logger.info(f"Extracting data from {url} with instructions: {instructions}")
             response = self.agent.run(prompt)
             
-            # Process the response
             if response and response.content:
-                # Parse and clean the response
+                
                 extracted_content = self._parse_json_from_response(response.content, url)
                 
-                # Create the result
+                
                 result = {
                     "url": url,
                     "extracted_content": extracted_content,
@@ -349,15 +321,12 @@ class Rufus:
     
     def _clean_function_calls(self, text):
         """Remove function call syntax from text"""
-        # If text is not a string, return it as is
         if not isinstance(text, str):
             return text
         
-        # Remove function call patterns
         cleaned = re.sub(r'<function=.*?</function>', '', text)
         cleaned = re.sub(r'Running:.*?\n', '', cleaned)
         
-        # Remove empty lines
         cleaned = re.sub(r'\n\s*\n', '\n', cleaned)
         
         return cleaned.strip()
@@ -373,19 +342,15 @@ class Rufus:
         Returns:
             dict: Parsed JSON or structured content
         """
-        # Clean the response text
         cleaned_text = self._clean_function_calls(response_text)
         
-        # Try to extract JSON from the response
         json_pattern = r'```json\s*([\s\S]*?)\s*```'
         json_matches = re.findall(json_pattern, cleaned_text)
         
         if json_matches:
-            # Use the first JSON block found
             try:
                 json_content = json.loads(json_matches[0])
                 
-                # Ensure it has the required fields
                 if not isinstance(json_content, dict):
                     json_content = {"content": json_content}
                 
@@ -395,7 +360,6 @@ class Rufus:
                 if "metadata" not in json_content:
                     json_content["metadata"] = {}
                 
-                # Add source and extraction time if not present
                 if "source" not in json_content["metadata"]:
                     json_content["metadata"]["source"] = url
                 
@@ -406,11 +370,10 @@ class Rufus:
             except json.JSONDecodeError:
                 self.logger.warning(f"Failed to parse JSON from response for {url}")
         
-        # Try to parse the entire response as JSON
         try:
             json_content = json.loads(cleaned_text)
             
-            # Ensure it has the required fields
+
             if not isinstance(json_content, dict):
                 json_content = {"content": json_content}
             
@@ -420,7 +383,6 @@ class Rufus:
             if "metadata" not in json_content:
                 json_content["metadata"] = {}
             
-            # Add source and extraction time if not present
             if "source" not in json_content["metadata"]:
                 json_content["metadata"]["source"] = url
             
@@ -431,8 +393,6 @@ class Rufus:
         except json.JSONDecodeError:
             pass
         
-        # If we couldn't parse JSON, create a structured format
-        # Extract a title from the first line if possible
         lines = cleaned_text.split('\n')
         title = "Extracted Information"
         content = cleaned_text
@@ -446,7 +406,6 @@ class Rufus:
                 title = first_line
                 content = '\n'.join(lines[1:]).strip()
         
-        # Create a structured format
         return {
             "title": title,
             "content": content,
@@ -464,19 +423,15 @@ class Rufus:
             if 'extracted_content' in item:
                 content = item['extracted_content']
                 
-                # Handle string content
                 if isinstance(content, str):
-                    # Check if it's "No meaningful content"
                     if content == "No meaningful content found on this page.":
                         processed_data.append(item)
                         continue
                     
-                    # Try to parse as JSON
                     try:
                         parsed = json.loads(content)
                         item['extracted_content'] = parsed
                     except:
-                        # Clean up and structure as JSON
                         cleaned = self._clean_function_calls(content)
                         item['extracted_content'] = {
                             "title": "Extracted Information",
@@ -487,17 +442,14 @@ class Rufus:
                             }
                         }
                 
-                # Handle dict content
                 elif isinstance(content, dict):
-                    # Clean up title and content if they contain function calls
                     if 'title' in content:
                         content['title'] = self._clean_function_calls(content['title'])
                     
                     if 'content' in content:
-                        # Handle both string and dict content
                         if isinstance(content['content'], str):
                             content['content'] = self._clean_function_calls(content['content'])
-                        # If content is already a dict, leave it as is
+                        
                 
                 processed_data.append(item)
         
@@ -521,7 +473,6 @@ class Rufus:
         if not new_content or not existing_contents:
             return False
         
-        # Extract the content field for comparison
         if isinstance(new_content, dict) and 'content' in new_content:
             new_text = str(new_content['content'])
         else:
@@ -561,18 +512,18 @@ class Rufus:
             self.logger.error(f"Invalid URL: {start_url}")
             return []
         
-        # Extract domain for staying within the same site
+        
         domain = urlparse(start_url).netloc
         
-        # Initialize crawling queue
-        self.to_visit = [(start_url, 0)]  # (url, depth)
+        
+        self.to_visit = [(start_url, 0)]  
         self.visited_urls = set()
         self.extracted_data = []
         
         self.logger.info(f"Starting crawl from {start_url} with instructions: {instructions}")
         self.logger.info(f"Maximum pages: {self.max_pages}, Maximum depth: {self.max_depth}")
         
-        # Process URLs until queue is empty or max_pages is reached
+        
         while self.to_visit and len(self.visited_urls) < self.max_pages:
             current_url, current_depth = self.to_visit.pop(0)
             
@@ -582,40 +533,39 @@ class Rufus:
             self.logger.info(f"Processing {current_url} (depth: {current_depth})")
             self.visited_urls.add(current_url)
             
-            # Get page content and links
             content, links = self.scrape_page(current_url)
             
             if not content:
                 self.logger.warning(f"No content found at {current_url}")
                 continue
             
-            # Check file extension
+            
             url_extension = os.path.splitext(current_url)[1].lower()
             if url_extension in ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.mp4', '.webm', '.mp3', '.wav', '.pdf']:
                 self.logger.info(f"Skipping non-text content: {current_url}")
                 continue
             
-            # Check if the page is relevant
+            
             if not self.is_relevant(content, instructions):
                 self.logger.info(f"Skipping irrelevant page: {current_url}")
                 continue
             
-            # Extract structured data
+            
             structured_data = self.extract_data(current_url, content, instructions)
             
-            # Check for duplicate content before adding
+            
             if structured_data and not self._is_duplicate_content(
                 structured_data.get('extracted_content'), 
                 self.extracted_data
             ):
                 self.extracted_data.append(structured_data)
-                # Save intermediate results only if enabled
+                
                 if self.save_intermediate:
                     self.save_results(f"rufus_intermediate_{len(self.extracted_data)}.json")
             else:
                 self.logger.info(f"Skipping duplicate content from {current_url}")
             
-            # Add new links to visit if within depth limit
+            
             if current_depth < self.max_depth:
                 for link in links:
                     try:
@@ -626,7 +576,7 @@ class Rufus:
                     except Exception as e:
                         self.logger.warning(f"Error processing link {link}: {e}")
         
-        # Post-process the extracted data to clean up and standardize
+        
         self.extracted_data = self._post_process_extracted_data()
         
         self.logger.info(f"Crawling completed. Processed {len(self.visited_urls)} pages, extracted {len(self.extracted_data)} documents.")
@@ -653,7 +603,6 @@ class Rufus:
             self.logger.warning("No WebDriver instance to close.")
 
 def main():
-    # Set up command line arguments
     parser = argparse.ArgumentParser(description="Rufus - Intelligent Web Data Extraction for LLMs")
     parser.add_argument("--url", type=str, help="URL to start crawling from")
     parser.add_argument("--instructions", type=str, help="Instructions for data extraction")
@@ -668,10 +617,10 @@ def main():
     
     args = parser.parse_args()
     
-    # Set log level based on verbose flag
+    
     log_level = logging.DEBUG if args.verbose else logging.INFO
     
-    # If arguments are not provided, ask for them interactively
+    
     url = args.url
     if not url:
         url = input("Enter the URL to start crawling from: ")
@@ -692,10 +641,8 @@ def main():
     )
     
     try:
-        # Crawl the website and extract data
         rufus.crawl(url, instructions)
         
-        # Save the results
         rufus.save_results(args.output)
     
     except KeyboardInterrupt:
@@ -709,7 +656,6 @@ def main():
             rufus.save_results(args.output)
     
     finally:
-        # Clean up
         rufus.close()
 
 if __name__ == "__main__":
